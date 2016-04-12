@@ -35,6 +35,7 @@ if __name__ == '__main__':
     mass = rospy.get_param('~mass')
     gravity = kdl.Wrench(kdl.Vector(0, 0, -9.81*mass), kdl.Vector(0, 0, 0))
     gravity_frame = rospy.get_param('~gravity_frame', 'world')
+    # com = center of mass
     com_frame = rospy.get_param('~com_frame')
     # wait for initial transform
     if not tf2_buffer.can_transform(com_frame, gravity_frame, rospy.Time.now(),
@@ -48,9 +49,12 @@ if __name__ == '__main__':
         # get transforms: gravity -> com -> sensor
         tf_gravity = get_frame(com_frame, gravity_frame, time)
         tf_com = get_frame(force_frame, com_frame, time)
-        # compute compensated force
+        # compute gravity at com: change coordinate system (rotate)
         gravity_at_com = tf_gravity.M * gravity
+        # compute gravity at sensor: screw theory transform
+        # this covers coordinate change and translation-lever
         gravity_at_sensor = tf_com * gravity_at_com
+        # compensate
         compensated = wrench_msg_to_kdl(msg) - gravity_at_sensor
         # publish
         compensated_msg = geometry_msgs.WrenchStamped(
