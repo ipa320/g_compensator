@@ -1,12 +1,9 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 import rospy
-
 import PyKDL as kdl
-import tf2_py
 import tf2_kdl
 import tf2_ros
-from geometry_msgs.msg import Vector3, Wrench, WrenchStamped
+import geometry_msgs.msg as geometry_msgs
 
 tf2_buffer = tf2_ros.Buffer()
 
@@ -18,42 +15,47 @@ def wrench_msg_to_kdl(msg):
 
 
 def wrench_kdl_to_msg(w):
-    return Wrench(force=Vector3(*w.force), torque=Vector3(*w.torque))
+    return geometry_msgs.Wrench(
+        force=geometry_msgs.Vector3(*w.force),
+        torque=geometry_msgs.Vector3(*w.torque))
+
+
+def get_frame(parent, frame, time):
+    return tf2_kdl.transform_to_kdl(
+        tf2_buffer.lookup_transform(parent, frame, time))
 
 
 if __name__ == '__main__':
-    rospy.init_node('force_listener', anonymous=True)
-
-    pub = rospy.Publisher('/wrench_compensated', WrenchStamped, queue_size=1)
-
+    rospy.init_node('g_compensator', anonymous=True)
+    pub = rospy.Publisher('/wrench_compensated', geometry_msgs.WrenchStamped,
+                          queue_size=1)
+    # start filling the tf buffer
     tf2_listener = tf2_ros.TransformListener(tf2_buffer)
-
+    # get parameters
     mass = rospy.get_param('~mass')
     gravity = kdl.Wrench(kdl.Vector(0, 0, -9.81*mass), kdl.Vector(0, 0, 0))
-    gravity_frame = 'world'
+    gravity_frame = rospy.get_param('~gravity_frame', 'world')
     com_frame = rospy.get_param('~com_frame')
+    # wait for initial transform
+    if not tf2_buffer.can_transform(com_frame, gravity_frame, rospy.Time.now(),
+                                    rospy.Duration(1.0)):
+        rospy.logwarn('Could not get an initial transform from {} to {}.',
+                      com_frame, gravity_frame)
 
     def wrench_cb(msg):
-        try:
-            tf_gravity = tf2_kdl.transform_to_kdl(
-                tf2_buffer.lookup_transform(com_frame, gravity_frame, rospy.Time(0)))
-            tf_com = tf2_kdl.transform_to_kdl(
-                tf2_buffer.lookup_transform(msg.header.frame_id, com_frame, rospy.Time(0)))
-        except (
-                tf2_py.ConnectivityException,
-                tf2_py.ExtrapolationException,
-                tf2_py.LookupException) as e:
-            rospy.logwarn('Waiting for transform.')
-            if tf2_buffer.can_transform(msg.header.frame_id, gravity_frame, rospy.Time(0), rospy.Duration(1.0)):
-                rospy.logwarn('Got transform.')
-            else:
-                rospy.logerr(e)
-            return
+        time = rospy.Time(0)  # alternative: msg.header.stamp
+        force_frame = msg.header.frame_id
+        # get transforms: gravity -> com -> sensor
+        tf_gravity = get_frame(com_frame, gravity_frame, time)
+        tf_com = get_frame(force_frame, com_frame, time)
+        # compute compensated force
         gravity_at_com = tf_gravity.M * gravity
         gravity_at_sensor = tf_com * gravity_at_com
         compensated = wrench_msg_to_kdl(msg) - gravity_at_sensor
-        compensated_msg = WrenchStamped(header=msg.header, wrench=wrench_kdl_to_msg(compensated))
+        # publish
+        compensated_msg = geometry_msgs.WrenchStamped(
+            header=msg.header, wrench=wrench_kdl_to_msg(compensated))
         pub.publish(compensated_msg)
 
-    rospy.Subscriber("/ipa325_ftcl_can_node/wrench", WrenchStamped, wrench_cb)
+    rospy.Subscriber('/wrench', geometry_msgs.WrenchStamped, wrench_cb)
     rospy.spin()
