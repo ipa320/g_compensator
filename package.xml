@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package>
+  <name>g_compensation</name>
+  <version>0.0.0</version>
+  <description>Gravity compensation for FT-sensors.</description>
+
+  <maintainer email="phg@ipa.fhg.de">Philipp Gorczak</maintainer>
+
+  <license>TODO</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>python_orocos_kdl</run_depend>
+  <run_depend>rospy</run_depend>
+  <run_depend>tf2_kdl</run_depend>
+  <run_depend>tf2_py</run_depend>
+  <run_depend>tf2_ros</run_depend>
+
+  <export>
+  </export>
+
+</package>
