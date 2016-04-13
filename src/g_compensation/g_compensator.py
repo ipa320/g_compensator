@@ -40,7 +40,7 @@ if __name__ == '__main__':
     # wait for initial transform
     if not tf2_buffer.can_transform(com_frame, gravity_frame, rospy.Time.now(),
                                     rospy.Duration(1.0)):
-        rospy.logwarn('Could not get an initial transform from {} to {}.',
+        rospy.logwarn('Could not get an initial transform from %s to %s.',
                       com_frame, gravity_frame)
 
     def wrench_cb(msg):
