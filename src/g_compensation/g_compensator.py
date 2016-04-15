@@ -24,8 +24,9 @@ def wrench_kdl_to_msg(w):
 
 
 def init_transform(parent, frame):
-    while not tf2_buffer.can_transform(parent, frame, rospy.Time.now(),
-                                       rospy.Duration(4.0)):
+    while (not tf2_buffer.can_transform(
+               parent, frame, rospy.Time.now(), rospy.Duration(4.0)) and
+           not rospy.is_shutdown()):
         rospy.logerr('Waiting for transform "%s" -> "%s".', parent, frame)
 
 
