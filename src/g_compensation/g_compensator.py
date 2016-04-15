@@ -1,6 +1,9 @@
 #!/usr/bin/env python
+import threading
+
 import rospy
 import PyKDL as kdl
+import tf2_py as tf2
 import tf2_kdl
 import tf2_ros
 import geometry_msgs.msg as geometry_msgs
@@ -18,6 +21,12 @@ def wrench_kdl_to_msg(w):
     return geometry_msgs.Wrench(
         force=geometry_msgs.Vector3(*w.force),
         torque=geometry_msgs.Vector3(*w.torque))
+
+
+def init_transform(parent, frame):
+    while not tf2_buffer.can_transform(parent, frame, rospy.Time.now(),
+                                       rospy.Duration(4.0)):
+        rospy.logerr('Waiting for transform "%s" -> "%s".', parent, frame)
 
 
 def get_frame(parent, frame, time):
@@ -38,17 +47,27 @@ if __name__ == '__main__':
     # com = center of mass
     com_frame = rospy.get_param('~com_frame')
     # wait for initial transform
-    if not tf2_buffer.can_transform(com_frame, gravity_frame, rospy.Time.now(),
-                                    rospy.Duration(1.0)):
-        rospy.logwarn('Could not get an initial transform from %s to %s.',
-                      com_frame, gravity_frame)
+    init_transform(com_frame, gravity_frame)
+    tf_available = threading.Event()
+    tf_available.set()
 
     def wrench_cb(msg):
+        if not tf_available.is_set():
+            rospy.logdebug('Unavailable transforms: Skipping message.')
+            return
         time = rospy.Time(0)  # alternative: msg.header.stamp
         force_frame = msg.header.frame_id
         # get transforms: gravity -> com -> sensor
-        tf_gravity = get_frame(com_frame, gravity_frame, time)
-        tf_com = get_frame(force_frame, com_frame, time)
+        try:
+            tf_gravity = get_frame(com_frame, gravity_frame, time)
+            tf_com = get_frame(force_frame, com_frame, time)
+        except tf2.TransformException as e:
+            tf_available.clear()
+            rospy.logerr(e)
+            init_transform(com_frame, gravity_frame)
+            init_transform(force_frame, com_frame)
+            tf_available.set()
+            return
         # compute gravity at com: change coordinate system (rotate)
         gravity_at_com = tf_gravity.M * gravity
         # compute gravity at sensor: screw theory transform
