@@ -37,7 +37,7 @@ def get_frame(parent, frame, time):
 
 if __name__ == '__main__':
     rospy.init_node('g_compensator', anonymous=True)
-    pub = rospy.Publisher('/wrench_compensated', geometry_msgs.WrenchStamped,
+    pub = rospy.Publisher('wrench_compensated', geometry_msgs.WrenchStamped,
                           queue_size=1)
     # start filling the tf buffer
     tf2_listener = tf2_ros.TransformListener(tf2_buffer)
@@ -81,5 +81,5 @@ if __name__ == '__main__':
             header=msg.header, wrench=wrench_kdl_to_msg(compensated))
         pub.publish(compensated_msg)
 
-    rospy.Subscriber('/wrench', geometry_msgs.WrenchStamped, wrench_cb)
+    rospy.Subscriber('wrench', geometry_msgs.WrenchStamped, wrench_cb)
     rospy.spin()
