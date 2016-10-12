@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import collections
 import threading
 
 import rospy
@@ -10,6 +11,10 @@ import geometry_msgs.msg as geometry_msgs
 from std_srvs.srv import Empty, EmptyResponse
 
 tf2_buffer = tf2_ros.Buffer()
+
+
+def mean_wrench(wrenches):
+    return reduce(lambda x, y: x + y, wrenches) / len(wrenches)
 
 
 def wrench_msg_to_kdl(msg):
@@ -56,16 +61,13 @@ if __name__ == '__main__':
 
     # wait for initial transform
     init_transform(com_frame, gravity_frame)
-    tf_available = threading.Event()
-    tf_available.set()
+
+    # tare
+    wrench_buffer = collections.deque(maxlen=50)
+    run_tare = threading.Event()
 
     def wrench_cb(msg):
-        global run_tare
         global tare_offset
-
-        if not tf_available.is_set():
-            rospy.logdebug('Unavailable transforms: Skipping message.')
-            return
 
         time = rospy.Time(0)  # alternative: msg.header.stamp
         force_frame = msg.header.frame_id
@@ -75,11 +77,9 @@ if __name__ == '__main__':
             tf_gravity = get_frame(com_frame, gravity_frame, time)
             tf_com = get_frame(force_frame, com_frame, time)
         except tf2.TransformException as e:
-            tf_available.clear()
             rospy.logerr(e)
             init_transform(com_frame, gravity_frame)
             init_transform(force_frame, com_frame)
-            tf_available.set()
             return
 
         # compute gravity at com: change coordinate system (rotate)
@@ -91,11 +91,13 @@ if __name__ == '__main__':
 
         # compensate
         compensated = wrench_msg_to_kdl(msg) - gravity_at_sensor
+        wrench_buffer.append(compensated)
 
         # Tare
-        if run_tare:
-            tare_offset = compensated
-            run_tare = False
+        if run_tare.is_set():
+            tare_offset = mean_wrench(wrench_buffer)
+            run_tare.clear()
+            rospy.loginfo("Tared sensor")
 
         compensated = compensated - tare_offset
 
@@ -105,13 +107,12 @@ if __name__ == '__main__':
         pub.publish(compensated_msg)
 
     def tare_cb(req):
-        global run_tare
-        rospy.loginfo("Taring sensor")
-        run_tare = True
+        run_tare.set()
         return EmptyResponse()
 
     # pubs'n'subs
-    rospy.Subscriber('wrench', geometry_msgs.WrenchStamped, wrench_cb)
+    rospy.Subscriber('wrench', geometry_msgs.WrenchStamped, wrench_cb,
+                     queue_size=1)
     rospy.Service('tare', Empty, tare_cb)
 
     # run
@@ -119,5 +120,3 @@ if __name__ == '__main__':
     rospy.spin()
 
     rospy.loginfo("Shutting down gravity compensator")
-
-    # eof
