@@ -9,6 +9,7 @@ import tf2_kdl
 import tf2_ros
 import geometry_msgs.msg as geometry_msgs
 from std_srvs.srv import Empty, EmptyResponse
+from functools import reduce
 
 tf2_buffer = tf2_ros.Buffer()
 
