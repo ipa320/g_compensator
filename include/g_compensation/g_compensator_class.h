@@ -16,7 +16,7 @@
 class GCompensator
 {
 public:
-    GCompensator(ros::NodeHandle nh) : nh_(nh), tf_listener_(buf_)
+    GCompensator(ros::NodeHandle nh) : nh_(nh), tf_listener_(buf_), last_updated_row_(0)
     {
         getStaticParameters();
 
@@ -33,7 +33,7 @@ public:
         gravity_ = KDL::Wrench(KDL::Vector(0, 0, -9.81 * mass_), KDL::Vector(0, 0, 0));
         tare_offset_ = KDL::Wrench(KDL::Vector(0, 0, 0), KDL::Vector(0, 0, 0));
 
-        std::deque<KDL::Wrench> wrench_buffer(50);
+        wrench_buffer_.resize(buffer_size_);
 
         while (!getTransform(com_frame_, gravity_frame_, tf_gravity_))
         {
@@ -47,9 +47,19 @@ public:
         ros::NodeHandle n_static_params("~");
         std::size_t error = 0;
         error += !rosparam_shortcuts::get("g_compensator", n_static_params, "mass", mass_);
-        error += !rosparam_shortcuts::get("g_compensator", n_static_params, "gravity_frame", gravity_frame_);
         error += !rosparam_shortcuts::get("g_compensator", n_static_params, "com_frame", com_frame_);
         rosparam_shortcuts::shutdownIfError("g_compensator", error);
+
+        if (!rosparam_shortcuts::get("g_compensator", n_static_params, "gravity_frame", gravity_frame_))
+        {
+            ROS_WARN("Continuing with default gravity_frame 'world'.");
+            gravity_frame_ = "world"; // default value
+        };
+        if (!rosparam_shortcuts::get("g_compensator", n_static_params, "buffer_size", buffer_size_))
+        {
+            buffer_size_ = 50; //default value
+            ROS_WARN("Continuing with default buffer_size '50'.");
+        };
     }
 
     bool getTransform(const std::string &target, const std::string &source, KDL::Frame &transform)
@@ -88,18 +98,23 @@ public:
         {
             //compute gravity at com : change coordinate system(rotate)
             //     gravity_at_com = tf_gravity.M * gravity
-            KDL::Wrench gravity_at_com = tf_gravity_.M * gravity_;
+            gravity_at_com_ = tf_gravity_.M * gravity_;
 
             //     # compute gravity at sensor: screw theory transform
             //     # this covers coordinate change and translation-lever
             //     gravity_at_sensor = tf_com * gravity_at_com
-            KDL::Wrench gravity_at_sensor = tf_com_ * gravity_at_com;
+            gravity_at_sensor_ = tf_com_ * gravity_at_com_;
 
             //     # compensate
-            KDL::Wrench message_wrench;
-            tf::wrenchMsgToKDL(msg->wrench, message_wrench);
-            KDL::Wrench compensated = message_wrench - gravity_at_sensor;
-            wrench_buffer_.push_back(compensated);
+            tf::wrenchMsgToKDL(msg->wrench, message_wrench_);
+            compensated_ = message_wrench_ - gravity_at_sensor_;
+
+            if (last_updated_row_ >= buffer_size_)
+                last_updated_row_ = 0;
+            else
+                last_updated_row_++;
+
+            wrench_buffer_[last_updated_row_] = compensated_;
 
             //     # Tare
             //     if run_tare.is_set():
@@ -113,20 +128,21 @@ public:
             }
 
             //     compensated = compensated - tare_offset
-            compensated = compensated - tare_offset_;
+            compensated_ = compensated_ - tare_offset_;
 
             //     # publish
             //     compensated_msg = geometry_msgs.WrenchStamped(
             //         header=msg.header, wrench=wrench_kdl_to_msg(compensated))
             //     pub.publish(compensated_msg)
-            geometry_msgs::WrenchStamped compensated_msg;
-            compensated_msg.header = msg->header;
-            tf::wrenchKDLToMsg(compensated, compensated_msg.wrench);
-            pub_.publish(compensated_msg);
+
+            compensated_msg_.header = msg->header;
+            tf::wrenchKDLToMsg(compensated_, compensated_msg_.wrench);
+            pub_.publish(compensated_msg_);
         }
         else
         {
             ROS_ERROR_STREAM("Could not get transform " << gravity_frame_ << " -> " << com_frame_ << " or " << msg->header.frame_id << " -> " << com_frame_ << "..");
+            sleep(1);
         }
     }
 
@@ -141,7 +157,7 @@ public:
         return mean_sum / size;
     }
 
-    bool tareCB(std_srvs::EmptyRequest& req, std_srvs::EmptyResponse& res)
+    bool tareCB(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res)
     {
         run_tare_ = true;
         return true;
@@ -157,9 +173,18 @@ private:
     tf2_ros::TransformListener tf_listener_;
     KDL::Wrench gravity_;
     KDL::Wrench tare_offset_;
-    std::deque<KDL::Wrench>
+    std::vector<KDL::Wrench>
         wrench_buffer_;
     KDL::Frame tf_gravity_, tf_com_;
     std::atomic_bool run_tare_ = {false};
     ros::ServiceServer srv_tare_;
+
+    int buffer_size_;
+    int last_updated_row_;
+
+    KDL::Wrench gravity_at_com_;
+    KDL::Wrench gravity_at_sensor_;
+    KDL::Wrench message_wrench_;
+    KDL::Wrench compensated_;
+    geometry_msgs::WrenchStamped compensated_msg_;
 };
