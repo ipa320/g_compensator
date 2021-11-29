@@ -11,7 +11,7 @@
             </rosparam>
         </node>
 
-        <!-- Gravity compensation - python version (legacy) -->
+        <!-- Gravity compensation - cpp version -->
         <node name="g_compensation_cpp" pkg="g_compensation" type="g_compensator_v2">
             <rosparam>
                 com_frame: tool
