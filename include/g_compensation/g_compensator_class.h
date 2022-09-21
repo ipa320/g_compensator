@@ -110,11 +110,12 @@ public:
             compensated_ = message_wrench_ - gravity_at_sensor_;
 
             if (last_updated_row_ >= buffer_size_)
+            {
                 last_updated_row_ = 0;
-            else
-                last_updated_row_++;
+            }
 
             wrench_buffer_[last_updated_row_] = compensated_;
+            last_updated_row_++;
 
             //     # Tare
             //     if run_tare.is_set():
