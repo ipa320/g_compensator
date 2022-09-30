@@ -2,7 +2,7 @@
 
 #include "g_compensation/g_compensator_class.h"
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     ros::init(argc, argv, "g_compensator");
     ros::NodeHandle nh;
