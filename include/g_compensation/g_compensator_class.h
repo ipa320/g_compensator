@@ -10,7 +10,6 @@
 
 #include <rosparam_shortcuts/rosparam_shortcuts.h>
 
-#include <deque>
 #include <boost/thread.hpp> // sleep()
 #include <atomic>
 
