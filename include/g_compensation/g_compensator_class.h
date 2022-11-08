@@ -11,6 +11,7 @@
 #include <rosparam_shortcuts/rosparam_shortcuts.h>
 
 #include <deque>
+#include <boost/thread.hpp> // sleep()
 #include <atomic>
 
 class GCompensator
@@ -35,6 +36,7 @@ public:
 
         wrench_buffer_.resize(buffer_size_);
 
+        sleep(1);
         while (!getTransform(com_frame_, gravity_frame_, tf_gravity_))
         {
             ROS_WARN_STREAM("Waiting for transform " << gravity_frame_ << " -> " << com_frame_ << "..");
