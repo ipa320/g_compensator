@@ -55,6 +55,7 @@ if __name__ == '__main__':
     mass = rospy.get_param('~mass')
     gravity_frame = rospy.get_param('~gravity_frame', 'world')
     com_frame = rospy.get_param('~com_frame')  # com = center of mass
+    negate_wrench = -1 if rospy.get_param('~negate_wrench', False) else 1
 
     gravity = kdl.Wrench(kdl.Vector(0, 0, -9.81*mass), kdl.Vector(0, 0, 0))
     tare_offset = kdl.Wrench(kdl.Vector(0, 0, 0), kdl.Vector(0, 0, 0))
@@ -91,7 +92,7 @@ if __name__ == '__main__':
         gravity_at_sensor = tf_com * gravity_at_com
 
         # compensate
-        compensated = wrench_msg_to_kdl(msg) - gravity_at_sensor
+        compensated = negate_wrench * wrench_msg_to_kdl(msg) - gravity_at_sensor
         wrench_buffer.append(compensated)
 
         # Tare

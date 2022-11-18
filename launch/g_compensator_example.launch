@@ -8,6 +8,7 @@
                 com_frame: tool
                 gravity_frame: base_link
                 mass: 1.266
+                negate_wrench: false
             </rosparam>
         </node>
 
