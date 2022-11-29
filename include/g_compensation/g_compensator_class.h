@@ -60,14 +60,14 @@ public:
         if (!rosparam_shortcuts::get("g_compensator", n_static_params, "buffer_size", buffer_size_))
         {
             buffer_size_ = 50; //default value
-            ROS_WARN("Continuing with default buffer_size '50'.");
+            ROS_INFO("Continuing with default buffer_size '50'.");
         };
 
         bool negate_wrench_flag;
         if (!rosparam_shortcuts::get("g_compensator", n_static_params, "negate_wrench", negate_wrench_flag))
         {
             negate_wrench_flag = false; //default value
-            ROS_WARN("Continuing with not negating the wrench received per default.");
+            ROS_INFO("Continuing with not negating the wrench received per default.");
         };
         negate_wrench_ = negate_wrench_flag ? -1 : 1;
     }
