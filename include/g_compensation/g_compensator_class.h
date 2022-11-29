@@ -63,13 +63,13 @@ public:
             ROS_WARN("Continuing with default buffer_size '50'.");
         };
 
-        bool negate_wrench_flag_;
-        if (!rosparam_shortcuts::get("g_compensator", n_static_params, "negate_wrench", negate_wrench_flag_))
+        bool negate_wrench_flag;
+        if (!rosparam_shortcuts::get("g_compensator", n_static_params, "negate_wrench", negate_wrench_flag))
         {
-            negate_wrench_flag_ = false; //default value
+            negate_wrench_flag = false; //default value
             ROS_WARN("Continuing with not negating the wrench received per default.");
         };
-        negate_wrench_ = negate_wrench_flag_ ? -1 : 1;
+        negate_wrench_ = negate_wrench_flag ? -1 : 1;
     }
 
     bool getTransform(const std::string &target, const std::string &source, KDL::Frame &transform)
