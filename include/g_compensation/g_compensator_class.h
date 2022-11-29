@@ -69,7 +69,7 @@ public:
             negate_wrench_flag_ = false; //default value
             ROS_WARN("Continuing with not negating the wrench received per default.");
         };
-        negate_wrench_ = int(negate_wrench_flag_) * -2 + 1;
+        negate_wrench_ = negate_wrench_flag_ ? -1 : 1;
     }
 
     bool getTransform(const std::string &target, const std::string &source, KDL::Frame &transform)
