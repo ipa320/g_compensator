@@ -9,6 +9,8 @@ g_compensation
 
 * All calculations are based on [PyKDL](http://docs.ros.org/diamondback/api/kdl/html/python/) and [tf2](http://wiki.ros.org/tf2)
 
+* Some manipulators, like the KUKA iiwa or the Franka Emika Panda, publish the wrench data of their force-torque sensor in the opposite convention. I.e., they publish the wrench with which the environment acts on the manipulator. To convert such a signal into the more usual definition (the wrench with which the manipulator acts on the environment), the parameter **negate_wrench** can be set to `True` (default: `False`).
+
 * A rosservice */tare* can be called to tare in the current pose.
 
 ## Acknowledgements
