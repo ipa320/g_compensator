@@ -38,9 +38,10 @@ public:
         sleep(1);
         while (!getTransform(com_frame_, gravity_frame_, tf_gravity_))
         {
-            ROS_WARN_STREAM("Waiting for transform " << gravity_frame_ << " -> " << com_frame_ << "..");
+            ROS_WARN_STREAM_ONCE("Waiting for transform " << gravity_frame_ << " -> " << com_frame_ << "..");
             sleep(2);
         }
+        ROS_INFO_STREAM("Ready to compensate incoming wrench on topic " << sub_.getTopic());
     }
 
     void getStaticParameters()

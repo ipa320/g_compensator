@@ -34,7 +34,7 @@ def init_transform(parent, frame):
     while (not tf2_buffer.can_transform(
                parent, frame, rospy.Time.now(), rospy.Duration(4.0)) and
            not rospy.is_shutdown()):
-        rospy.logerr('Waiting for transform "%s" -> "%s".', parent, frame)
+        rospy.logerr_once('Waiting for transform "%s" -> "%s".', parent, frame)
 
 
 def get_frame(parent, frame, time):
