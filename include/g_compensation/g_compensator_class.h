@@ -10,7 +10,7 @@
 
 #include <rosparam_shortcuts/rosparam_shortcuts.h>
 
-#include <deque>
+#include <boost/thread.hpp> // sleep()
 #include <atomic>
 
 class GCompensator
@@ -35,11 +35,13 @@ public:
 
         wrench_buffer_.resize(buffer_size_);
 
+        sleep(1);
         while (!getTransform(com_frame_, gravity_frame_, tf_gravity_))
         {
-            ROS_WARN_STREAM("Waiting for transform " << gravity_frame_ << " -> " << com_frame_ << "..");
+            ROS_WARN_STREAM_ONCE("Waiting for transform " << gravity_frame_ << " -> " << com_frame_ << "..");
             sleep(2);
         }
+        ROS_INFO_STREAM("Ready to compensate incoming wrench on topic " << sub_.getTopic());
     }
 
     void getStaticParameters()
@@ -110,11 +112,12 @@ public:
             compensated_ = message_wrench_ - gravity_at_sensor_;
 
             if (last_updated_row_ >= buffer_size_)
+            {
                 last_updated_row_ = 0;
-            else
-                last_updated_row_++;
+            }
 
             wrench_buffer_[last_updated_row_] = compensated_;
+            last_updated_row_++;
 
             //     # Tare
             //     if run_tare.is_set():

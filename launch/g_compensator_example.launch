@@ -12,14 +12,14 @@
         </node>
 
         <!-- Gravity compensation - cpp version -->
-        <node name="g_compensation_cpp" pkg="g_compensation" type="g_compensator_v2">
+        <node name="g_compensation_cpp" pkg="g_compensation" type="g_compensator">
             <rosparam>
                 com_frame: tool
                 gravity_frame: base_link
                 mass: 1.266
             </rosparam>
-            <remap from="wrench_compensated" to="wrench_compensated_v2"/>
-            <remap from="tare" to="tare_v2" />
+            <remap from="wrench_compensated" to="wrench_compensated_cpp"/>
+            <remap from="tare" to="tare_cpp" />
         </node>
 
 </launch>
