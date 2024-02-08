@@ -60,8 +60,16 @@ public:
         if (!rosparam_shortcuts::get("g_compensator", n_static_params, "buffer_size", buffer_size_))
         {
             buffer_size_ = 50; //default value
-            ROS_WARN("Continuing with default buffer_size '50'.");
+            ROS_INFO("Continuing with default buffer_size '50'.");
         };
+
+        bool negate_wrench_flag;
+        if (!rosparam_shortcuts::get("g_compensator", n_static_params, "negate_wrench", negate_wrench_flag))
+        {
+            negate_wrench_flag = false; //default value
+            ROS_INFO("Continuing with not negating the wrench received per default.");
+        };
+        negate_wrench_ = negate_wrench_flag ? -1 : 1;
     }
 
     bool getTransform(const std::string &target, const std::string &source, KDL::Frame &transform)
@@ -109,7 +117,7 @@ public:
 
             //     # compensate
             tf::wrenchMsgToKDL(msg->wrench, message_wrench_);
-            compensated_ = message_wrench_ - gravity_at_sensor_;
+            compensated_ = negate_wrench_ * message_wrench_ - gravity_at_sensor_;
 
             if (last_updated_row_ >= buffer_size_)
             {
@@ -182,6 +190,7 @@ private:
     std::atomic_bool run_tare_ = {false};
     ros::ServiceServer srv_tare_;
 
+    int negate_wrench_;
     int buffer_size_;
     int last_updated_row_;
 
